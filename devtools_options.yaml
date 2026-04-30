@@ -1,0 +1,7 @@
+description: This file stores settings for Dart & Flutter DevTools.
+documentation: https://docs.flutter.dev/tools/devtools/extensions#configure-extension-enablement-states
+extensions:
+- name: prisma_devtools
+  uri: http://localhost:4000
+  enableByDefault: true
+  displayName: "Prisma DevTools"

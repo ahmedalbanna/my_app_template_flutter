@@ -1,14 +1,19 @@
 import 'package:dio/dio.dart';
+import 'package:injectable/injectable.dart';
+import 'package:logger/logger.dart';
+import '../constants/app_constants.dart';
+import '../storage/local_data_source.dart';
+import 'auth_interceptor.dart';
 
-class ApiClient {
-  late final Dio dio;
-
-  ApiClient() {
-    dio = Dio(
+@module
+abstract class NetworkModule {
+  @lazySingleton
+  Dio dio(LocalDataSource localDataSource) {
+    final dio = Dio(
       BaseOptions(
-        baseUrl: 'https://api.example.com/',
-        connectTimeout: const Duration(seconds: 15),
-        receiveTimeout: const Duration(seconds: 15),
+        baseUrl: AppConstants.baseUrl,
+        connectTimeout: AppConstants.connectTimeout,
+        receiveTimeout: AppConstants.receiveTimeout,
         headers: {
           'Content-Type': 'application/json',
           'Accept': 'application/json',
@@ -16,20 +21,19 @@ class ApiClient {
       ),
     );
 
+    // إضافة JWT + Refresh Token interceptor
+    dio.interceptors.add(AuthInterceptor(localDataSource: localDataSource));
+
+    // تسجيل الطلبات في وضع التطوير
     dio.interceptors.add(
-      InterceptorsWrapper(
-        onRequest: (options, handler) {
-          // Add auth token here if needed
-          return handler.next(options);
-        },
-        onResponse: (response, handler) {
-          return handler.next(response);
-        },
-        onError: (DioException e, handler) {
-          // Handle global errors here
-          return handler.next(e);
-        },
+      LogInterceptor(
+        requestBody: true,
+        responseBody: true,
+        error: true,
+        logPrint: (obj) => Logger().d(obj),
       ),
     );
+
+    return dio;
   }
 }

@@ -1,61 +1,94 @@
 import 'package:flutter/material.dart';
-import 'package:flutter_bloc/flutter_bloc.dart';
 import 'package:flutter_screenutil/flutter_screenutil.dart';
-import '../../../../dependency_injection/injection_container.dart';
-import '../bloc/home_bloc.dart';
-import '../bloc/home_event.dart';
-import '../bloc/home_state.dart';
+import 'package:go_router/go_router.dart';
+import 'package:flutter_bloc/flutter_bloc.dart';
+import '../../../../core/theme/theme_cubit.dart';
+import '../../../auth/presentation/bloc/auth_bloc.dart';
 
 class HomePage extends StatelessWidget {
   const HomePage({super.key});
 
   @override
   Widget build(BuildContext context) {
-    return BlocProvider(
-      create: (_) => sl<HomeBloc>()..add(FetchHomeDataEvent()),
+    return BlocListener<AuthBloc, AuthState>(
+      listener: (context, state) {
+        if (state is Unauthenticated) {
+          context.go('/login');
+        }
+      },
       child: Scaffold(
         appBar: AppBar(
-          title: const Text('Clean Architecture Template'),
+          title: const Text('Dashboard'),
+          actions: [
+            IconButton(
+              icon: const Icon(Icons.brightness_6),
+              onPressed: () => context.read<ThemeCubit>().toggleTheme(),
+            ),
+            IconButton(
+              icon: const Icon(Icons.logout),
+              onPressed: () => context.read<AuthBloc>().add(const AuthLogoutRequested()),
+            ),
+          ],
         ),
-        body: BlocBuilder<HomeBloc, HomeState>(
-          builder: (context, state) {
-            if (state is HomeLoading) {
-              return const Center(child: CircularProgressIndicator());
-            } else if (state is HomeLoaded) {
-              return Center(
-                child: Padding(
-                  padding: EdgeInsets.all(16.w),
-                  child: Column(
-                    mainAxisAlignment: MainAxisAlignment.center,
-                    children: [
-                      Icon(Icons.check_circle_outline, color: Colors.green, size: 64.w),
-                      SizedBox(height: 16.h),
-                      Text(
-                        state.data.title,
-                        style: Theme.of(context).textTheme.headlineSmall,
-                        textAlign: TextAlign.center,
-                      ),
-                      SizedBox(height: 8.h),
-                      Text(
-                        state.data.description,
-                        style: Theme.of(context).textTheme.bodyMedium,
-                        textAlign: TextAlign.center,
-                      ),
-                    ],
-                  ),
+        body: Padding(
+          padding: EdgeInsets.all(24.w),
+          child: Column(
+            crossAxisAlignment: CrossAxisAlignment.start,
+            children: [
+              BlocBuilder<AuthBloc, AuthState>(
+                builder: (context, state) {
+                  String name = 'Guest';
+                  if (state is Authenticated) {
+                    name = '${state.user.firstName} ${state.user.lastName}'.trim();
+                    if (name.isEmpty) name = state.user.email;
+                  }
+                  return Text(
+                    'Welcome back, $name!',
+                    style: TextStyle(fontSize: 24.sp, fontWeight: FontWeight.bold),
+                  );
+                },
+              ),
+              SizedBox(height: 20.h),
+              Expanded(
+                child: GridView.count(
+                  crossAxisCount: 2,
+                  crossAxisSpacing: 16.w,
+                  mainAxisSpacing: 16.h,
+                  children: [
+                    _buildDashboardItem(context, Icons.person, 'Profile'),
+                    _buildDashboardItem(context, Icons.settings, 'Settings'),
+                    _buildDashboardItem(context, Icons.notifications, 'Notifications'),
+                    _buildDashboardItem(context, Icons.info, 'About'),
+                  ],
                 ),
-              );
-            } else if (state is HomeError) {
-              return Center(
-                child: Text(
-                  state.message,
-                  style: const TextStyle(color: Colors.red),
-                ),
-              );
-            }
-            return const SizedBox();
-          },
+              ),
+            ],
+          ),
         ),
+      ),
+    );
+  }
+
+  Widget _buildDashboardItem(BuildContext context, IconData icon, String label) {
+    return Container(
+      decoration: BoxDecoration(
+        color: Theme.of(context).cardColor,
+        borderRadius: BorderRadius.circular(16.r),
+        boxShadow: [
+          BoxShadow(
+            color: Colors.black.withOpacity(0.05),
+            blurRadius: 10,
+            offset: const Offset(0, 4),
+          ),
+        ],
+      ),
+      child: Column(
+        mainAxisAlignment: MainAxisAlignment.center,
+        children: [
+          Icon(icon, size: 40.sp, color: const Color(0xFF2196F3)),
+          SizedBox(height: 12.h),
+          Text(label, style: TextStyle(fontSize: 16.sp, fontWeight: FontWeight.w500)),
+        ],
       ),
     );
   }
